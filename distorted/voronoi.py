@@ -5,7 +5,9 @@ import warnings
 import ase.neighborlist as _ase
 import numpy as np
 from ase import Atoms
-from scipy.spatial import ConvexHull, Voronoi, distance_matrix
+from scipy.spatial import ConvexHull, Voronoi
+
+from .util import minimal_distance_perm
 
 
 def get_neighborlist(
@@ -64,7 +66,7 @@ class VoronoiNeighborlist:
 
         self._atoms = atoms
 
-    def apply_clustering_(self, prec) -> int:
+    def apply_clustering_(self, prec: float) -> int:
         """
         Apply clustering to the voronoi cells.
 
@@ -86,7 +88,7 @@ class VoronoiNeighborlist:
             for k, ref in self._centre.items():
                 if ref.shape[0] != n:
                     continue
-                perm, diffs = _min_dist_perm(rij, ref)
+                perm, diffs = minimal_distance_perm(rij, ref)
                 x = diffs.max()
                 if x < prec and x < best_prec:
                     best_k = k
@@ -214,29 +216,6 @@ def _get_local_voronoi(
             areas.append(area)
             volumes.append(vol)
     return np.array(indices), np.array(areas), np.array(volumes)
-
-
-def _min_dist_perm(rij: np.ndarray, ref: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Find a permutation of rows of rij that minimizes the sum of squared
-    distances to ref:
-        rij[perm] ~ ref
-
-    They should have the same length, but the order may be different.
-
-    The assumption is that since these are vectors to voronoi neighbors, the
-    vectors in rij, ref are well distinct, so a simple distance matrix is sufficient
-    and we don't need to search all permutations.
-
-    Returns:
-        perm: permutation of rij that minimizes the sum of squared distances
-        diff: squared distances
-    """
-    assert rij.shape == ref.shape
-    dm = distance_matrix(rij, ref)
-    perm = np.argmin(dm, axis=0)
-    diff = dm[perm].diagonal()
-    return perm, diff
 
 
 def _get_displacements(

@@ -75,6 +75,8 @@ class SymmetryDataset:
         """Get the reconstructed super cell as an ASE Atoms object."""
         if unit_cell is None:
             unit_cell = self.get_standard_unit_cell(origin_choice="unchanged")
+        # Note that the definition of the transformation matrix is different
+        # from the one used in spglib (by a transpose).
         super_cell = make_supercell(unit_cell, self.transformation_matrix.T)
         return super_cell
 
