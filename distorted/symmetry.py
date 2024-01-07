@@ -68,7 +68,7 @@ class SymmetryDataset:
             scaled_positions,
             self.std_types,
         )
-        atoms = _spg_cell_to_ase_atoms(spg_cell)
+        atoms = spg_cell_to_ase_atoms(spg_cell)
         return atoms
 
     def get_super_cell(self, unit_cell: Atoms | None = None) -> Atoms:
@@ -81,15 +81,29 @@ class SymmetryDataset:
         return super_cell
 
 
-def get_symmetry_dataset(atoms: Atoms, symprec: float) -> SymmetryDataset:
+def get_symmetry_dataset(atoms: Atoms | SpgCell, symprec: float) -> SymmetryDataset:
     """Get the symmetry dataset from an ASE Atoms object."""
-    spg_cell = _ase_atoms_to_spg_cell(atoms)
+    if isinstance(atoms, Atoms):
+        spg_cell = ase_atoms_to_spg_cell(atoms)
+    else:
+        spg_cell = atoms
     dataset = spglib.get_symmetry_dataset(spg_cell, symprec=symprec)
     return SymmetryDataset(**dataset)
 
 
-def _ase_atoms_to_spg_cell(atoms: Atoms) -> SpgCell:
-    """Get the cell arguments for spglib from an ASE Atoms object."""
+def ase_atoms_to_spg_cell(atoms: Atoms) -> SpgCell:
+    """
+    Get the cell arguments for spglib from an ASE Atoms object.
+
+    Args:
+        atoms:
+            The ASE Atoms object.
+
+    Returns:
+        The cell arguments for spglib.
+        The format is (cell, scaled_positions, numbers).
+
+    """
     cell = atoms.get_cell()
     scaled_positions = atoms.get_scaled_positions()
     numbers = atoms.get_atomic_numbers()
@@ -97,10 +111,21 @@ def _ase_atoms_to_spg_cell(atoms: Atoms) -> SpgCell:
     return spg_cell
 
 
-def _spg_cell_to_ase_atoms(
+def spg_cell_to_ase_atoms(
     spg_cell: SpgCell,
 ) -> Atoms:
-    """Get an ASE Atoms object from the cell arguments for spglib."""
+    """
+    Get an ASE Atoms object from the cell arguments for spglib.
+
+    Args:
+        spg_cell:
+            The cell arguments for spglib.
+            The format is (cell, scaled_positions, numbers).
+
+    Returns:
+        The ASE Atoms object.
+
+    """
     cell, scaled_positions, numbers = spg_cell
     atoms = Atoms(numbers, scaled_positions=scaled_positions, cell=cell, pbc=True)
     return atoms

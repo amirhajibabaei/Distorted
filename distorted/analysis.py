@@ -24,6 +24,7 @@ def analyse_structure(
 
     unit_cell = None
     _tags = []
+    shifts = []
     for t in range(ntags):
         sub_latt = refined[tags == t]
         sub_sym = get_symmetry_dataset(
@@ -41,6 +42,8 @@ def analyse_structure(
         assert sub_sym.number == sym.number
         assert np.allclose(sub_sym.std_lattice, sym.std_lattice)
 
+        shifts.append(sub_sym.origin_shift)
+
     assert unit_cell is not None
     unit_cell.set_tags(_tags)
-    return unit_cell, sym, refined_dist, nl
+    return unit_cell, sym, refined_dist, nl, shifts
