@@ -1,8 +1,9 @@
 import numpy as np
+from ase.geometry import Cell, get_distances
 
 
 def minimal_distance_perm(
-    x: np.ndarray, y: np.ndarray
+    x: np.ndarray, y: np.ndarray, cell: Cell = None, pbc: np.ndarray = None
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Find a permutation of rows of x that minimizes the sum of squared
@@ -20,12 +21,16 @@ def minimal_distance_perm(
         diff: distances
     """
     assert x.shape == y.shape and x.ndim == 2 and x.shape[1] == 3
-    d = x[:, None] - y[None, :]
-    dm = np.linalg.norm(d, axis=-1)
+
+    # Find distace matrix, taking into account periodic boundary conditions.
+    # Without mic, this is equivalent to: d = y[None, :] - x[:, None]
+    d, dm = get_distances(p1=x, p2=y, cell=cell, pbc=pbc)
     perm = np.argmin(dm, axis=0)
     diff = dm[perm].diagonal()
 
     # test there are no duplicates
-    assert len(np.unique(perm)) == len(perm)
+    assert len(np.unique(perm)) == len(
+        perm
+    ), f"duplicate indices in permutation: {perm}"
 
     return perm, diff
