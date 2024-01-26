@@ -80,6 +80,11 @@ class SymmetryDataset:
         super_cell = make_supercell(unit_cell, self.transformation_matrix.T)
         return super_cell
 
+    def get_oriented_std_lattice(self) -> np.ndarray:
+        """Get the a,b,c axes in frame of the input cell."""
+        axes = np.array([self.std_rotation_matrix.T @ v for v in self.std_lattice])
+        return axes
+
 
 def get_symmetry_dataset(atoms: Atoms | SpgCell, symprec: float) -> SymmetryDataset:
     """Get the symmetry dataset from an ASE Atoms object."""
@@ -104,6 +109,7 @@ def ase_atoms_to_spg_cell(atoms: Atoms) -> SpgCell:
         The format is (cell, scaled_positions, numbers).
 
     """
+    _assert_oriented(atoms)
     cell = atoms.get_cell()
     scaled_positions = atoms.get_scaled_positions()
     numbers = atoms.get_atomic_numbers()
@@ -129,3 +135,25 @@ def spg_cell_to_ase_atoms(
     cell, scaled_positions, numbers = spg_cell
     atoms = Atoms(numbers, scaled_positions=scaled_positions, cell=cell, pbc=True)
     return atoms
+
+
+def get_oriented(a: Atoms) -> Atoms:
+    """
+    Return a copy of the atom with the orientation of the cell canonicalized.
+    """
+    return Atoms(
+        cell=a.cell.cellpar(),
+        scaled_positions=a.get_scaled_positions(),
+        symbols=a.get_chemical_symbols(),
+        pbc=a.pbc,
+    )
+
+
+def _assert_oriented(atoms: Atoms) -> None:
+    """
+    Check if the cell is oriented correctly.
+    """
+    cell = atoms.cell
+    cell2 = atoms.cell.fromcellpar(cell.cellpar())
+    if not np.allclose(cell, cell2):
+        raise ValueError("The cell is not oriented correctly.")
