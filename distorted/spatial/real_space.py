@@ -1,14 +1,15 @@
-from typing import Sequence
+import typing
 
 import numpy as np
 from ase.atoms import Atoms
 from ase.cell import Cell
 
+import distorted.spatial.util as _util
 import distorted.symmetry as _sym
 
 
 def get_real_space_projected_density(
-    traj: Sequence[Atoms],
+    traj: typing.Sequence[Atoms],
     max_bin_width: float | tuple[float, float, float],
     data: _sym.SymmetryDataset,
     atomic_numbers: int | set[int] | None = None,
@@ -24,7 +25,7 @@ def get_real_space_projected_density(
         atomic_numbers = set(traj[0].numbers)
 
     # bins and histogram
-    bin_sizes = _get_num_bins(oriented_std_cell, max_bin_width)
+    bin_sizes = _util.get_num_bins(oriented_std_cell, max_bin_width)
     edges = [np.linspace(0, 1, n + 1) for n in bin_sizes]
     hist = {z: np.zeros(bin_sizes) for z in atomic_numbers}
     c = {z: 0 for z in atomic_numbers}
@@ -50,14 +51,3 @@ def get_real_space_projected_density(
         hist[z] /= c[z] * dv
 
     return hist
-
-
-def _get_num_bins(
-    cell: Cell,
-    max_bin_width: float | tuple[float, float, float],
-) -> tuple[int, int, int]:
-    """
-    Get the number of bins for a given cell and max bin width.
-    """
-    lengths = cell.cellpar()[:3]
-    return tuple(np.ceil(lengths / max_bin_width).astype(int))
