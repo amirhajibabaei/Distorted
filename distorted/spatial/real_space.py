@@ -4,6 +4,7 @@ import numpy as np
 from ase.atoms import Atoms
 from ase.cell import Cell
 
+import distorted.spatial.peaks as _peaks
 import distorted.spatial.util as _util
 import distorted.symmetry as _sym
 
@@ -51,3 +52,30 @@ def get_real_space_projected_density(
         hist[z] /= c[z] * dv
 
     return hist
+
+
+def hist_to_peaks(
+    cell: Cell,
+    hist: np.ndarray,
+    min_radius: float,
+    *,
+    threshold: float = 0,
+    symbol: str = "X",
+) -> Atoms:
+    delta = min(cell.cellpar()[:3] / hist.shape)
+    w = np.ceil(min_radius / delta).astype(int)
+    print(f"Using {w} as the peak width.")
+    coords, peaks = _peaks.find_peaks(
+        hist,
+        w,
+        threshold=threshold,
+        dxdydz=1,
+        shift=0.5,
+    )
+    atoms = Atoms(
+        [symbol] * len(coords),
+        scaled_positions=coords / hist.shape,
+        cell=cell,
+        pbc=True,
+    )
+    return atoms, peaks

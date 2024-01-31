@@ -1,4 +1,4 @@
-from .spatial import get_real_space_projected_density
+from .spatial import get_real_space_projected_density, hist_to_peaks
 from .symmetry import (
     ase_atoms_to_spg_cell,
     get_oriented,
@@ -17,4 +17,5 @@ __all__ = [
     "get_oriented",
     "minimal_distance_perm",
     "get_real_space_projected_density",
+    "hist_to_peaks",
 ]
