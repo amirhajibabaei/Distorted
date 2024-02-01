@@ -1,6 +1,7 @@
 import typing
 
 import numpy as np
+from ase.geometry import Cell, get_distances
 from scipy.interpolate import RegularGridInterpolator
 from scipy.optimize import minimize
 
@@ -42,8 +43,10 @@ def find_peaks(
         correction, value = _interpolated_peak(window, w)
         coords.append((i, j, k) + correction)
         values.append(value)
-    positions = (np.array(coords) + shift) * dxdydz
-    return positions, np.array(values)
+    positions = np.array(coords) + shift
+    peaks = np.array(values)
+    positions, peaks = _merge_close_peaks(positions, peaks, w, f3d.shape)
+    return positions * dxdydz, peaks
 
 
 def _get_range(w: int) -> np.ndarray:
@@ -93,6 +96,47 @@ def _interpolated_peak(
     # The interpolated maximum should be near the center of the window
     assert abs(res.x).max() < 1.5
     return res.x, -res.fun
+
+
+def _merge_close_peaks(
+    positions: np.ndarray,
+    peaks: np.ndarray,
+    distance_threshold: float,
+    wrap: tuple[float, float, float],
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Merge peaks that are closer than the threshold.
+    :param positions: positions of the peaks
+    :param peaks: values of the peaks
+    :param distance_threshold: minimum distance between peaks
+    :param wrap: wrap distances (pbc)
+    :return: positions, values
+    """
+    cell = Cell(np.diag(wrap))
+    _, dm = get_distances(p1=positions, cell=cell, pbc=True)
+    # if a few peaks are very close, we merge them
+    # by taking the weighted average of their positions
+    # and values
+    clusters = np.zeros(len(positions), dtype=int)
+    c = 0
+    for i in range(len(positions)):
+        if clusters[i] != 0:
+            continue
+        c += 1
+        j = np.argwhere(dm[i] < distance_threshold).flatten()
+        clusters[j] = c
+    merged = []
+    for c in range(1, clusters.max() + 1):
+        mask = clusters == c
+        weights = peaks[mask] / peaks[mask].sum()
+        merged.append(
+            (
+                (positions[mask] * weights[:, None]).mean(axis=0),
+                peaks[mask].mean(),
+            )
+        )
+    positions_, peaks_ = zip(*merged)
+    return np.array(positions_), np.array(peaks_)
 
 
 def test_find_peaks():

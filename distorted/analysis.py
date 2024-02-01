@@ -9,7 +9,7 @@ def analyse_structure(
     atoms: Atoms,
     voronoi_neighborhood: float | VoronoiNeighborlist,
     clustering_threshold: float,
-    symprec: float | None = None,
+    symprec: float,
 ):
     if isinstance(voronoi_neighborhood, float):
         nl = VoronoiNeighborlist(get_neighborlist(len(atoms), voronoi_neighborhood))

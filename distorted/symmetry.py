@@ -7,6 +7,8 @@ from ase import Atoms
 from ase.build import make_supercell
 from numpy import ndarray
 
+from .trajectory import _assert_standard, get_standard_atoms
+
 # SpgCell: (cell, scaled_positions, numbers)
 SpgCell = tuple[np.ndarray, np.ndarray, np.ndarray]
 
@@ -77,8 +79,9 @@ class SymmetryDataset:
             unit_cell = self.get_standard_unit_cell(origin_choice="unchanged")
         # Note that the definition of the transformation matrix is different
         # from the one used in spglib (by a transpose).
-        super_cell = make_supercell(unit_cell, self.transformation_matrix.T)
-        return super_cell
+        atoms = make_supercell(unit_cell, self.transformation_matrix.T)
+        atoms = get_standard_atoms(atoms)
+        return atoms
 
     def get_oriented_std_lattice(self) -> np.ndarray:
         """Get the a,b,c axes in frame of the input cell."""
@@ -86,13 +89,22 @@ class SymmetryDataset:
         return axes
 
 
-def get_symmetry_dataset(atoms: Atoms | SpgCell, symprec: float) -> SymmetryDataset:
+def get_symmetry_dataset(
+    atoms: Atoms | SpgCell,
+    symprec: float,
+    magmoms: typing.Sequence[float] | None = None,
+) -> SymmetryDataset:
     """Get the symmetry dataset from an ASE Atoms object."""
     if isinstance(atoms, Atoms):
         spg_cell = ase_atoms_to_spg_cell(atoms)
     else:
         spg_cell = atoms
-    dataset = spglib.get_symmetry_dataset(spg_cell, symprec=symprec)
+    mag: tuple
+    if magmoms is None:
+        mag = tuple()
+    else:
+        mag = (magmoms,)
+    dataset = spglib.get_symmetry_dataset((*spg_cell, *mag), symprec=symprec)
     return SymmetryDataset(**dataset)
 
 
@@ -109,7 +121,7 @@ def ase_atoms_to_spg_cell(atoms: Atoms) -> SpgCell:
         The format is (cell, scaled_positions, numbers).
 
     """
-    _assert_oriented(atoms)
+    _assert_standard(atoms)
     cell = atoms.get_cell()
     scaled_positions = atoms.get_scaled_positions()
     numbers = atoms.get_atomic_numbers()
@@ -135,25 +147,3 @@ def spg_cell_to_ase_atoms(
     cell, scaled_positions, numbers = spg_cell
     atoms = Atoms(numbers, scaled_positions=scaled_positions, cell=cell, pbc=True)
     return atoms
-
-
-def get_oriented(a: Atoms) -> Atoms:
-    """
-    Return a copy of the atom with the orientation of the cell canonicalized.
-    """
-    return Atoms(
-        cell=a.cell.cellpar(),
-        scaled_positions=a.get_scaled_positions(),
-        symbols=a.get_chemical_symbols(),
-        pbc=a.pbc,
-    )
-
-
-def _assert_oriented(atoms: Atoms) -> None:
-    """
-    Check if the cell is oriented correctly.
-    """
-    cell = atoms.cell
-    cell2 = atoms.cell.fromcellpar(cell.cellpar())
-    if not np.allclose(cell, cell2):
-        raise ValueError("The cell is not oriented correctly.")

@@ -13,6 +13,7 @@ def get_real_space_projected_density(
     traj: typing.Sequence[Atoms],
     max_bin_width: float | tuple[float, float, float],
     data: _sym.SymmetryDataset,
+    fixed_com_atom_type: int | None = None,
     atomic_numbers: int | set[int] | None = None,
     max_cell_diff: float | None = None,
     adjust_cell: bool = True,
@@ -32,8 +33,13 @@ def get_real_space_projected_density(
     c = {z: 0 for z in atomic_numbers}
 
     # loop over trajectory
+    mask = traj[0].numbers == fixed_com_atom_type
+    if fixed_com_atom_type is not None:
+        int_com = traj[0][mask].get_center_of_mass()
     for atoms in traj:
-        _sym._assert_oriented(atoms)
+        if fixed_com_atom_type is not None:
+            assert np.allclose(int_com, atoms[mask].get_center_of_mass())
+        _sym._assert_standard(atoms)
         if max_cell_diff is not None:
             assert abs(atoms.cell - recon_cell).max() < max_cell_diff
         for z in atomic_numbers:

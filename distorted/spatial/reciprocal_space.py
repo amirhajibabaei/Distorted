@@ -36,7 +36,7 @@ def get_reciprocal_space_projected_density(
 
     # loop over trajectory
     for atoms in traj:
-        _sym._assert_oriented(atoms)
+        _sym._assert_standard(atoms)
         if max_cell_diff is not None:
             assert abs(atoms.cell - recon_cell).max() < max_cell_diff
         for z in atomic_numbers:
