@@ -9,7 +9,7 @@ import distorted.spatial.util as _util
 import distorted.symmetry as _sym
 
 
-def get_real_space_projected_density(
+def get_projected_density(
     traj: typing.Sequence[Atoms],
     max_bin_width: float | tuple[float, float, float],
     data: _sym.SymmetryDataset,
